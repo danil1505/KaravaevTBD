@@ -1,0 +1,50 @@
+Вывести по заданному предмету количество посещенных занятий
+
+SELECT COUNT(*) AS attended_classes FROM student_attendance WHERE subject_id = 1 AND attended = TRUE;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+ Вывести по заданному предмету количество пропущенных занятий
+
+SELECT COUNT(*) AS missed_classes FROM student_attendance WHERE subject_id = 1 AND attended = FALSE;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Вывести по заданному преподавателю количество студентов на каждом занятии
+
+SELECT subjects.subject_name AS subject, class_times.pair_number AS pair, class_times.start_time AS start_time, class_times.end_time AS end_time,
+    COUNT(DISTINCT student_attendance.student_id) AS students_count
+FROM 
+    student_attendance
+JOIN 
+    subjects ON student_attendance.subject_id = subjects.id
+JOIN 
+    class_times ON student_attendance.class_time_id = class_times.id
+WHERE 
+    student_attendance.teacher_id = 4  
+GROUP BY 
+    subjects.subject_name, class_times.pair_number, class_times.start_time, class_times.end_time
+ORDER BY 
+    start_time;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Для каждого студента вывести общее время, потраченное на изучение каждого предмета
+
+SELECT students.first_name, students.last_name, subjects.subject_name,
+    COUNT(student_attendance.id) * 90 AS total_time_minutes 
+FROM 
+    student_attendance
+JOIN 
+    students ON student_attendance.student_id = students.id
+JOIN 
+    subjects ON student_attendance.subject_id = subjects.id
+WHERE 
+    student_attendance.attended = TRUE
+GROUP BY 
+    students.id, subjects.id
+ORDER BY 
+    students.last_name, students.first_name;

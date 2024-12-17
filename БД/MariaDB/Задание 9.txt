@@ -1,0 +1,180 @@
+проверка корректности выставляемой оценки
+
+DELIMITER $$
+
+CREATE TRIGGER check_grade_validity BEFORE INSERT ON grades
+FOR EACH ROW
+BEGIN
+    -- Проверяем, чтобы оценка была одной из допустимых: 2, 3, 4, 5
+    IF NOT (NEW.grade IN (2, 3, 4, 5) OR NEW.grade IS NULL) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Оценка должна быть 2, 3, 4 или 5, или отсутствовать';
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+
+INSERT INTO grades (student_id, subject_id, grade, teacher_id)
+VALUES (1, 1, 1, 1);
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+проверка корректности выставляемой оценки преподавателем
+
+DELIMITER $$
+
+CREATE TRIGGER validate_grade BEFORE INSERT ON grades
+FOR EACH ROW
+BEGIN
+    DECLARE teacher_count INT;
+
+    -- Проверка корректности преподавателя
+    SELECT COUNT(*) INTO teacher_count
+    FROM subjects
+    WHERE id = NEW.subject_id
+    AND teacher_id = NEW.teacher_id;
+
+    IF teacher_count = 0 THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Преподаватель не может выставить оценку по этому предмету';
+    END IF;
+
+    -- Проверка корректности оценки
+    IF NEW.grade NOT IN (2, 3, 4, 5) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Недопустимая оценка. Допустимы только 2, 3, 4, 5';
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+
+INSERT INTO grades (student_id, subject_id, grade, teacher_id)
+VALUES (1, 1, 5, 2);
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычисление, сохранение среднего значения оценок группы по тому предмету после внесения оценки
+
+CREATE TABLE group_subject_avg (
+    group_id INT,
+    subject_id INT,
+    avg_grade FLOAT,
+    PRIMARY KEY (group_id, subject_id)
+);
+
+DELIMITER $$
+
+CREATE TRIGGER update_group_subject_avg AFTER INSERT ON grades
+FOR EACH ROW
+BEGIN
+    DECLARE new_avg FLOAT;
+    DECLARE student_group_id INT;
+
+    SELECT group_id INTO student_group_id FROM students WHERE id = NEW.student_id;
+
+    SELECT AVG(grades.grade) INTO new_avg FROM grades
+    JOIN students ON grades.student_id = students.id
+    WHERE grades.subject_id = NEW.subject_id
+    AND students.group_id = student_group_id
+    AND grades.grade IS NOT NULL;
+
+
+    INSERT INTO group_subject_avg (group_id, subject_id, avg_grade)
+    VALUES (student_group_id, NEW.subject_id, new_avg)
+    ON DUPLICATE KEY UPDATE avg_grade = new_avg;
+END$$
+
+DELIMITER ;
+
+
+INSERT INTO grades (student_id, subject_id, grade, teacher_id)
+VALUES (1, 1, 5, 1);
+
+
+
+SELECT * FROM group_subject_avg;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+среднее значение оценок группы по всем предметам после внесения оценки
+
+CREATE TABLE group_avg (
+    group_id INT,
+    avg_grade FLOAT,
+    PRIMARY KEY (group_id)
+);
+
+DELIMITER $$
+
+CREATE TRIGGER update_group_avg AFTER INSERT ON grades
+FOR EACH ROW
+BEGIN
+    DECLARE new_avg FLOAT;
+    
+    SELECT AVG(grade) INTO new_avg
+    FROM grades
+    JOIN students ON grades.student_id = students.id
+    WHERE students.group_id = NEW.group_id
+    AND grades.grade IS NOT NULL;
+    
+    INSERT INTO group_avg (group_id, avg_grade)
+    VALUES (NEW.group_id, new_avg)
+    ON DUPLICATE KEY UPDATE avg_grade = new_avg;
+END$$
+
+DELIMITER ;
+
+
+
+INSERT INTO grades (student_id, subject_id, grade, teacher_id)
+VALUES (2, 2, 4, 1); 
+
+
+
+SELECT * FROM group_avg; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+реднеее значение оценок по предмету после внесения оценки
+CREATE TABLE subject_avg (
+    subject_id INT,
+    avg_grade FLOAT,
+    PRIMARY KEY (subject_id)
+);
+
+
+DELIMITER $$
+
+CREATE TRIGGER update_subject_avg AFTER INSERT ON grades
+FOR EACH ROW
+BEGIN
+    DECLARE new_avg FLOAT;
+    
+    SELECT AVG(grade) INTO new_avg
+    FROM grades
+    WHERE subject_id = NEW.subject_id
+    AND grade IS NOT NULL;
+    
+    INSERT INTO subject_avg (subject_id, avg_grade)
+    VALUES (NEW.subject_id, new_avg)
+    ON DUPLICATE KEY UPDATE avg_grade = new_avg;
+END$$
+
+DELIMITER ;
+
+
+INSERT INTO grades (student_id, subject_id, grade, teacher_id)
+VALUES (3, 1, 3, 1); 
+
+
+
+SELECT * FROM subject_avg; 
+
+

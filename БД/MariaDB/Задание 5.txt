@@ -1,0 +1,137 @@
+Списки групп по каждому предмету с указанием преподавателя
+
+SELECT 
+    s.subject_name AS subject,
+    CONCAT(t.last_name, ' ', t.first_name) AS teacher,
+    g.group_name
+FROM 
+    subjects s
+JOIN 
+    teachers t ON s.teacher_id = t.id
+JOIN 
+    groups g ON s.direction_id = g.direction_id ORDER BY s.subject_name, g.group_name;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+дисциплина которую изучает максимальное количество студентов
+
+SELECT 
+    s.subject_name AS subject,
+    COUNT(DISTINCT st.id) AS student_count
+FROM 
+    grades g
+JOIN 
+    students st ON g.student_id = st.id
+JOIN 
+    subjects s ON g.subject_id = s.id
+GROUP BY 
+    s.id ORDER BY student_count DESC LIMIT 1;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Студентов обучающиеся у каждого из преподавателей
+
+SELECT 
+    CONCAT(t.last_name, ' ', t.first_name) AS teacher,
+    COUNT(DISTINCT st.id) AS student_count
+FROM 
+    teachers t
+JOIN 
+    subjects s ON t.id = s.teacher_id
+JOIN 
+    grades g ON s.id = g.subject_id
+JOIN 
+    students st ON g.student_id = st.id
+GROUP BY t.id ORDER BY student_count DESC;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+сдавшие студенты по каждой дисциплине
+
+SELECT 
+    s.subject_name AS subject,
+    ROUND(
+        (SUM(CASE WHEN g.grade > 2 THEN 1 ELSE 0 END) / COUNT(*)) * 100, 
+        2
+    ) AS pass_rate_percentage
+FROM 
+    grades g
+JOIN subjects s ON g.subject_id = s.id GROUP BY s.id;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+средняя оценку по предметам (для сдавших студентов)
+
+SELECT 
+    s.subject_name AS subject,
+    ROUND(AVG(CASE WHEN g.grade > 2 THEN g.grade ELSE NULL END), 2) AS average_grade
+FROM 
+    grades g
+JOIN subjects s ON g.subject_id = s.id GROUP BY s.id;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Определить группу с максимальной средней оценкой (включая не сдавших)
+
+SELECT 
+    g.group_name AS `group`,
+    ROUND(AVG(COALESCE(gr.grade, 0)), 2) AS average_grade
+FROM 
+    grades gr
+JOIN 
+    students st ON gr.student_id = st.id
+JOIN 
+    groups g ON st.group_id = g.id
+GROUP BY 
+    g.id
+ORDER BY 
+    average_grade DESC
+LIMIT 1;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+студенты со всеми оценками отлично и не имеющих несданный экзамен
+
+SELECT 
+    st.last_name,
+    st.first_name,
+    st.middle_name,
+    g.group_name
+FROM 
+    students st
+JOIN 
+    groups g ON st.group_id = g.id
+WHERE 
+    NOT EXISTS (
+        SELECT 1 
+        FROM grades gr
+        WHERE gr.student_id = st.id 
+          AND (gr.grade < 5 OR gr.grade IS NULL)
+    );
+
+
+-----------------------------------------------------------------------------------------------------------------
+кандидаты на отчисление (не сдано не менее двух предметов)
+
+SELECT 
+    st.last_name,
+    st.first_name,
+    st.middle_name,
+    g.group_name,
+    COUNT(CASE WHEN gr.grade = 2 OR gr.grade IS NULL THEN 1 END) AS failed_subjects
+FROM 
+    students st
+JOIN 
+    grades gr ON st.id = gr.student_id
+JOIN 
+    groups g ON st.group_id = g.id
+GROUP BY 
+    st.id HAVING failed_subjects >= 2;
+
+

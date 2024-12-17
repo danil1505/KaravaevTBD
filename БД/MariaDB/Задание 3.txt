@@ -1,0 +1,121 @@
+Списки групп по заданному направлению с указанием номера группы "Экономика"
+
+SELECT 
+    g.group_name AS group_number,
+    CONCAT(s.last_name, ' ', LEFT(s.first_name, 1), '.', LEFT(s.middle_name, 1), '.') AS full_name,
+    s.is_budget AS budget_status
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+WHERE 
+    d.direction_name = 'Экономика' ORDER BY group_number, full_name;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Студенты с фамилией, начинающейся с первой буквы "К"
+
+SELECT 
+    CONCAT(s.last_name, ' ', s.first_name, ' ', s.middle_name) AS full_name,
+    g.group_name AS group_number,
+    d.direction_name AS direction
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+WHERE 
+    s.last_name LIKE 'К%' 
+ORDER BY 
+    s.last_name, s.first_name;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Список студентов для поздравления по месяцам
+
+SELECT 
+    CONCAT(s.last_name, ' ', LEFT(s.first_name, 1), '.', LEFT(s.middle_name, 1), '.') AS full_name,
+    DAY(s.birth_date) AS birth_day,
+    MONTHNAME(s.birth_date) AS birth_month,
+    g.group_name AS group_number,
+    d.direction_name AS direction
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+ORDER BY 
+    MONTH(s.birth_date), DAY(s.birth_date);
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Студенты с указанием возраста в годах
+
+SELECT CONCAT(s.last_name, ' ', s.first_name, ' ', s.middle_name) AS full_name,
+    TIMESTAMPDIFF(YEAR, s.birth_date, CURDATE()) AS age
+FROM 
+    students s
+ORDER BY 
+    age DESC, s.last_name, s.first_name;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Студенты, у которых день рождения в текущем месяце
+
+SELECT 
+    CONCAT(s.last_name, ' ', s.first_name, ' ', s.middle_name) AS full_name,
+    g.group_name AS group_number,
+    d.direction_name AS direction,
+    DATE_FORMAT(s.birth_date, '%d %M') AS birth_date
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+WHERE 
+    MONTH(s.birth_date) = MONTH(CURDATE()) ORDER BY DAY(s.birth_date), s.last_name;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Количество студентов по каждому направлению
+
+SELECT 
+    d.direction_name AS direction,
+    COUNT(s.id) AS student_count
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+GROUP BY 
+    d.direction_name ORDER BY student_count DESC;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+Количество бюджетных и внебюджетных мест по группам
+
+SELECT 
+    g.group_name AS group_number,
+    d.direction_name AS direction,
+    SUM(CASE WHEN s.is_budget = 'да' THEN 1 ELSE 0 END) AS budget_students,
+    SUM(CASE WHEN s.is_budget = 'нет' THEN 1 ELSE 0 END) AS non_budget_students
+FROM 
+    students s
+JOIN 
+    groups g ON s.group_id = g.id
+JOIN 
+    direction d ON g.direction_id = d.id
+GROUP BY 
+    g.group_name, d.direction_name ORDER BY g.group_name;

@@ -1,0 +1,200 @@
+вычисление средней оценки по заданному предмету для заданной группы
+
+
+CREATE OR REPLACE FUNCTION avg_grade_by_subject_group(subject_id INT, group_id INT)
+RETURNS FLOAT AS $$
+DECLARE avg_grade FLOAT;
+BEGIN
+    SELECT AVG(grade)
+    INTO avg_grade
+    FROM grades 
+    JOIN students ON grades.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE grades.subject_id = subject_id 
+    AND groups.id = group_id AND grades.grade IS NOT NULL;
+    RETURN avg_grade;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT avg_grade_by_subject_group(1, 2) AS avg_grade_for_group; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+средняя оценка по заданному предмету для заданного направления
+
+
+CREATE OR REPLACE FUNCTION avg_grade_by_subject_direction(subject_id INT, direction_id INT)
+RETURNS FLOAT AS $$
+DECLARE avg_grade FLOAT;
+BEGIN
+    SELECT AVG(grade)
+    INTO avg_grade
+    FROM grades
+    JOIN students ON grades.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE grades.subject_id = subject_id 
+    AND groups.direction_id = direction_id
+    AND grades.grade IS NOT NULL;
+    
+    RETURN avg_grade;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT avg_grade_by_subject_direction(2, 1) AS avg_grade_for_direction;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычисление количества отличников в заданной группе
+
+
+CREATE OR REPLACE FUNCTION count_excellent_students(group_id INT)
+RETURNS INT AS $$
+DECLARE excellent_count INT;
+BEGIN
+    SELECT COUNT(DISTINCT students.id)
+    INTO excellent_count
+    FROM students
+    JOIN grades ON students.id = grades.student_id
+    JOIN groups ON students.group_id = groups.id
+    WHERE groups.id = group_id
+    AND grades.grade = 5 
+    AND grades.grade IS NOT NULL;
+    
+    RETURN excellent_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT count_excellent_students(2) AS excellent_students_in_group; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+проверка наличия несданных экзаменов у студента
+
+
+CREATE OR REPLACE FUNCTION has_unsatisfactory_exams(student_id INT)
+RETURNS BOOLEAN AS $$
+DECLARE result BOOLEAN;
+BEGIN
+    SELECT CASE 
+        WHEN EXISTS (
+            SELECT 1 
+            FROM grades 
+            WHERE student_id = student_id 
+            AND (grade = 2 OR grade IS NULL)
+        ) THEN TRUE
+        ELSE FALSE
+    END
+    INTO result;
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT has_unsatisfactory_exams(1) AS has_unsatisfactory;
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычисление количества пропущенных занятий для каждого студента
+
+
+CREATE OR REPLACE FUNCTION missed_classes_for_student(student_id INT)
+RETURNS INT AS $$
+DECLARE missed_count INT;
+BEGIN
+    SELECT COUNT(*) 
+    INTO missed_count
+    FROM student_attendance
+    WHERE student_id = student_id AND attended = FALSE;
+    
+    RETURN missed_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT missed_classes_for_student(1) AS missed_classes_by_student; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычислени количества пропущенных занятий для каждой группы
+
+
+CREATE OR REPLACE FUNCTION missed_classes_for_group(group_id INT)
+RETURNS INT AS $$
+DECLARE missed_count INT;
+BEGIN
+    SELECT COUNT(*) 
+    INTO missed_count
+    FROM student_attendance
+    JOIN students ON student_attendance.student_id = students.id
+    WHERE students.group_id = group_id AND student_attendance.attended = FALSE;
+    
+    RETURN missed_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT missed_classes_for_group(2) AS missed_classes_by_group; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычисление количества пропущенных занятий для каждого направления
+
+
+CREATE OR REPLACE FUNCTION missed_classes_for_direction(direction_id INT)
+RETURNS INT AS $$
+DECLARE missed_count INT;
+BEGIN
+    SELECT COUNT(*) 
+    INTO missed_count
+    FROM student_attendance
+    JOIN students ON student_attendance.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE groups.direction_id = direction_id AND student_attendance.attended = FALSE;
+    
+    RETURN missed_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT missed_classes_for_direction(1) AS missed_classes_by_direction; 
+
+
+
+-----------------------------------------------------------------------------------------------------------------
+вычисление количества пропущенных занятий для каждого преподавателя
+
+
+CREATE OR REPLACE FUNCTION missed_classes_for_teacher(teacher_id INT)
+RETURNS INT AS $$
+DECLARE missed_count INT;
+BEGIN
+    SELECT COUNT(*) 
+    INTO missed_count
+    FROM student_attendance
+    WHERE student_attendance.teacher_id = teacher_id AND student_attendance.attended = FALSE;
+    
+    RETURN missed_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+SELECT missed_classes_for_teacher(1) AS missed_classes_by_teacher;
+
