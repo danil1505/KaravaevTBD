@@ -1,0 +1,58 @@
+-----------------------------------------------------------------------------------------------------------------
+-- Количество посещенных занятий по заданному предмету
+SELECT 
+    COUNT(*) AS attended_classes
+FROM 
+    student_attendance
+WHERE 
+    subject_id = 3 AND attended = 1;  
+
+-----------------------------------------------------------------------------------------------------------------
+-- Количество пропущенных занятий по заданному предмету
+SELECT 
+    COUNT(*) AS missed_classes
+FROM 
+    student_attendance
+WHERE 
+    subject_id = 3 AND attended = 0;  
+
+-----------------------------------------------------------------------------------------------------------------
+-- Количество студентов на каждом занятии для заданного преподавателя
+SELECT 
+    subjects.subject_name AS subject, 
+    class_times.pair_number AS pair, 
+    class_times.start_time AS start_time, 
+    class_times.end_time AS end_time,
+    COUNT(DISTINCT student_attendance.student_id) AS students_count
+FROM 
+    student_attendance
+JOIN 
+    subjects ON student_attendance.subject_id = subjects.id
+JOIN 
+    class_times ON student_attendance.class_time_id = class_times.id
+WHERE 
+    student_attendance.teacher_id = 5 
+GROUP BY 
+    subjects.subject_name, class_times.pair_number, class_times.start_time, class_times.end_time
+ORDER BY 
+    start_time;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Общее время, потраченное на изучение каждого предмета
+SELECT 
+    students.first_name, 
+    students.last_name, 
+    subjects.subject_name,
+    COUNT(student_attendance.id) * 80 AS total_time_minutes  
+FROM 
+    student_attendance
+JOIN 
+    students ON student_attendance.student_id = students.id
+JOIN 
+    subjects ON student_attendance.subject_id = subjects.id
+WHERE 
+    student_attendance.attended = 1
+GROUP BY 
+    students.first_name, students.last_name, subjects.subject_name
+ORDER BY 
+    students.last_name, students.first_name;

@@ -1,0 +1,156 @@
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление средней оценки по заданному предмету для заданной группы
+CREATE FUNCTION avg_grade_by_subject_group(@subject_id INT, @group_id INT)
+RETURNS FLOAT
+AS
+BEGIN
+    DECLARE @avg_grade FLOAT;
+    
+    SELECT @avg_grade = AVG(grade)
+    FROM grades 
+    JOIN students ON grades.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE grades.subject_id = @subject_id 
+    AND groups.id = @group_id 
+    AND grades.grade IS NOT NULL;
+
+    RETURN @avg_grade;
+END;
+
+SELECT dbo.avg_grade_by_subject_group(1, 2) AS avg_grade_for_group;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Средняя оценка по заданному предмету для заданного направления
+CREATE FUNCTION avg_grade_by_subject_direction(@subject_id INT, @direction_id INT)
+RETURNS FLOAT
+AS
+BEGIN
+    DECLARE @avg_grade FLOAT;
+    
+    SELECT @avg_grade = AVG(grade)
+    FROM grades
+    JOIN students ON grades.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE grades.subject_id = @subject_id 
+    AND groups.direction_id = @direction_id
+    AND grades.grade IS NOT NULL;
+
+    RETURN @avg_grade;
+END;
+
+SELECT dbo.avg_grade_by_subject_direction(2, 1) AS avg_grade_for_direction;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление количества отличников в заданной группе
+CREATE FUNCTION count_excellent_students(@group_id INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @excellent_count INT;
+
+    SELECT @excellent_count = COUNT(DISTINCT students.id)
+    FROM students
+    JOIN grades ON students.id = grades.student_id
+    JOIN groups ON students.group_id = groups.id
+    WHERE groups.id = @group_id
+    AND grades.grade = 5 
+    AND grades.grade IS NOT NULL;
+
+    RETURN @excellent_count;
+END;
+
+SELECT dbo.count_excellent_students(2) AS excellent_students_in_group;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Проверка наличия несданных экзаменов у студента
+CREATE FUNCTION has_unsatisfactory_exams(@student_id INT)
+RETURNS BIT
+AS
+BEGIN
+    DECLARE @result BIT;
+
+    IF EXISTS (
+        SELECT 1 
+        FROM grades 
+        WHERE student_id = @student_id 
+        AND (grade = 2 OR grade IS NULL)
+    )
+        SET @result = 1;
+    ELSE
+        SET @result = 0;
+
+    RETURN @result;
+END;
+
+SELECT dbo.has_unsatisfactory_exams(1) AS has_unsatisfactory;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление количества пропущенных занятий для каждого студента
+CREATE FUNCTION missed_classes_for_student(@student_id INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @missed_count INT;
+
+    SELECT @missed_count = COUNT(*) 
+    FROM student_attendance
+    WHERE student_id = @student_id AND attended = 0;
+
+    RETURN @missed_count;
+END;
+
+SELECT dbo.missed_classes_for_student(1) AS missed_classes_by_student;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление количества пропущенных занятий для каждой группы
+CREATE FUNCTION missed_classes_for_group(@group_id INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @missed_count INT;
+
+    SELECT @missed_count = COUNT(*) 
+    FROM student_attendance
+    JOIN students ON student_attendance.student_id = students.id
+    WHERE students.group_id = @group_id AND student_attendance.attended = 0;
+
+    RETURN @missed_count;
+END;
+
+SELECT dbo.missed_classes_for_group(2) AS missed_classes_by_group;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление количества пропущенных занятий для каждого направления
+CREATE FUNCTION missed_classes_for_direction(@direction_id INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @missed_count INT;
+
+    SELECT @missed_count = COUNT(*) 
+    FROM student_attendance
+    JOIN students ON student_attendance.student_id = students.id
+    JOIN groups ON students.group_id = groups.id
+    WHERE groups.direction_id = @direction_id AND student_attendance.attended = 0;
+
+    RETURN @missed_count;
+END;
+
+SELECT dbo.missed_classes_for_direction(1) AS missed_classes_by_direction;
+
+-----------------------------------------------------------------------------------------------------------------
+-- Вычисление количества пропущенных занятий для каждого преподавателя
+CREATE FUNCTION missed_classes_for_teacher(@teacher_id INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @missed_count INT;
+
+    SELECT @missed_count = COUNT(*) 
+    FROM student_attendance
+    WHERE student_attendance.teacher_id = @teacher_id AND student_attendance.attended = 0;
+
+    RETURN @missed_count;
+END;
+
+SELECT dbo.missed_classes_for_teacher(1) AS missed_classes_by_teacher;
